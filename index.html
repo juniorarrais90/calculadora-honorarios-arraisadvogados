@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora de Honorários — Arrais Advogados</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  :root {
+    --navy: #0D2340;
+    --navy-light: #1a3a5c;
+    --gold: #C9A84C;
+    --gold-light: #e0c270;
+    --bg: #f5f5f0;
+    --card: #ffffff;
+    --text: #1a1a1a;
+    --text-muted: #666;
+    --border: #e0e0e0;
+    --success: #2d6a4f;
+    --warning: #d4a017;
+    --danger: #b22222;
+  }
+  
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    padding: 20px;
+    min-height: 100vh;
+  }
+  
+  .container { max-width: 1200px; margin: 0 auto; }
+  
+  header {
+    background: var(--navy);
+    color: white;
+    padding: 24px 32px;
+    border-radius: 8px 8px 0 0;
+    border-bottom: 4px solid var(--gold);
+  }
+  
+  header h1 {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    margin-bottom: 4px;
+  }
+  
+  header p {
+    font-size: 13px;
+    color: var(--gold-light);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    background: var(--card);
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 2px 12px rgba(13, 35, 64, 0.08);
+    overflow: hidden;
+  }
+  
+  .panel { padding: 28px 32px; }
+  .panel-input { background: var(--card); border-right: 1px solid var(--border); }
+  .panel-output { background: linear-gradient(135deg, #fafaf5 0%, #f5f5f0 100%); }
+  
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--navy);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--gold);
+  }
+  
+  .field { margin-bottom: 20px; }
+  
+  .field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  
+  .field .hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 400;
+    font-style: italic;
+    margin-top: 4px;
+  }
+  
+  .field input[type="text"],
+  .field input[type="number"],
+  .field select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: all 0.2s;
+    background: white;
+  }
+  
+  .field input:focus, .field select:focus {
+    outline: none;
+    border-color: var(--navy);
+    box-shadow: 0 0 0 2px rgba(13, 35, 64, 0.1);
+  }
+  
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  
+  .currency-input { position: relative; }
+  
+  .currency-input::before {
+    content: "R$";
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    pointer-events: none;
+    z-index: 1;
+  }
+  
+  .currency-input input { padding-left: 36px !important; }
+  
+  .percent-input { position: relative; }
+  
+  .percent-input::after {
+    content: "%";
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    pointer-events: none;
+  }
+  
+  .percent-input input { padding-right: 32px; }
+  
+  .scenario-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  
+  .scenario-card {
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    background: white;
+  }
+  
+  .scenario-card:hover {
+    border-color: var(--gold);
+    background: rgba(201, 168, 76, 0.05);
+  }
+  
+  .scenario-card.selected {
+    border-color: var(--navy);
+    background: var(--navy);
+    color: white;
+  }
+  
+  .scenario-card.selected .scenario-card-title { color: white; }
+  .scenario-card.selected .scenario-card-desc { color: var(--gold-light); }
+  
+  .scenario-card-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--navy);
+    letter-spacing: 0.3px;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+  
+  .scenario-card-desc {
+    font-size: 10px;
+    color: var(--text-muted);
+    line-height: 1.3;
+  }
+  
+  .actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+  
+  button {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+  }
+  
+  .btn-primary { background: var(--navy); color: white; flex: 1; }
+  .btn-primary:hover { background: var(--navy-light); }
+  
+  .btn-secondary { background: white; color: var(--navy); border: 1px solid var(--navy); }
+  .btn-secondary:hover { background: var(--navy); color: white; }
+  
+  .btn-danger { background: white; color: var(--danger); border: 1px solid var(--danger); }
+  .btn-danger:hover { background: var(--danger); color: white; }
+  
+  .result-card {
+    background: white;
+    border-radius: 6px;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+    border-left: 3px solid var(--gold);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+  
+  .result-card.highlight {
+    background: var(--navy);
+    color: white;
+    border-left-color: var(--gold);
+  }
+  
+  .result-card.highlight .result-label { color: var(--gold-light); }
+  .result-card.highlight .result-value { color: white; }
+  
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+  }
+  
+  .result-row:last-child { margin-bottom: 0; }
+  
+  .result-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+  }
+  
+  .result-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--navy);
+    font-variant-numeric: tabular-nums;
+  }
+  
+  .result-value.large { font-size: 24px; }
+  
+  .result-detail {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+  
+  .result-card.highlight .result-detail { color: var(--gold-light); }
+  
+  .badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  
+  .badge-success { background: #d4edda; color: var(--success); }
+  .badge-warning { background: #fff3cd; color: var(--warning); }
+  .badge-info { background: rgba(13, 35, 64, 0.1); color: var(--navy); }
+  
+  .gate-warning {
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    border-radius: 4px;
+    padding: 12px 14px;
+    margin-top: 14px;
+    font-size: 12px;
+    color: #6d4c00;
+  }
+  
+  .partnership-section {
+    background: rgba(201, 168, 76, 0.08);
+    border: 1px solid rgba(201, 168, 76, 0.3);
+    border-radius: 6px;
+    padding: 16px 18px;
+    margin-top: 18px;
+  }
+  
+  .partnership-section .section-title { margin-bottom: 12px; font-size: 10px; }
+  
+  .saved-list {
+    background: white;
+    border-radius: 6px;
+    margin-top: 18px;
+    border: 1px solid var(--border);
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  
+  .saved-item {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  
+  .saved-item:last-child { border-bottom: none; }
+  .saved-item:hover { background: #fafaf5; }
+  .saved-item .label { font-weight: 500; color: var(--navy); }
+  .saved-item .meta { color: var(--text-muted); font-size: 11px; }
+  
+  .saved-item .delete-btn {
+    background: none;
+    border: none;
+    color: var(--danger);
+    cursor: pointer;
+    padding: 4px 8px;
+    font-size: 14px;
+    font-weight: bold;
+  }
+  
+  .saved-item .delete-btn:hover { background: #ffe5e5; border-radius: 3px; }
+  
+  .empty-state {
+    padding: 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-style: italic;
+  }
+  
+  footer {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: 12px;
+  }
+  
+  .scenarios-table {
+    width: 100%;
+    margin-top: 14px;
+    background: white;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    font-size: 12px;
+  }
+  
+  .scenarios-table th {
+    background: var(--navy);
+    color: white;
+    padding: 8px 10px;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  
+  .scenarios-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+  }
+  
+  .scenarios-table tr:last-child td { border-bottom: none; }
+  .scenarios-table .scenario-name { font-weight: 500; color: var(--navy); }
+  .scenarios-table .below-gate { color: var(--text-muted); font-style: italic; }
+  
+  .info-box {
+    background: rgba(13, 35, 64, 0.05);
+    border-left: 3px solid var(--navy);
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-size: 12px;
+    color: var(--text);
+    border-radius: 0 4px 4px 0;
+  }
+  
+  @media (max-width: 900px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .panel-input { border-right: none; border-bottom: 1px solid var(--border); }
+    .scenario-cards { grid-template-columns: 1fr; }
+  }
+  
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--success);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s;
+    pointer-events: none;
+    z-index: 1000;
+  }
+  
+  .toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="container">
+  
+  <header>
+    <h1>Calculadora de Honorários — Defesa Trabalhista</h1>
+    <p>Arrais Advogados · Modelagem Fixo + Êxito sobre Dano Reduzido</p>
+  </header>
+  
+  <div class="main-grid">
+    
+    <div class="panel panel-input">
+      
+      <div class="section-title">Identificação do Caso</div>
+      
+      <div class="field">
+        <label for="case-name">Nome / Identificação do Caso</label>
+        <input type="text" id="case-name" placeholder="Ex.: Empresa XYZ — Reclamação Trab. 0001234">
+      </div>
+      
+      <div class="section-title" style="margin-top: 28px;">Cenário de Encerramento</div>
+      
+      <div class="info-box">
+        Selecione em qual fase o processo foi encerrado. O honorário fixo aplicável muda conforme a Cláusula 3.1 do contrato.
+      </div>
+      
+      <div class="scenario-cards" id="scenario-cards">
+        <div class="scenario-card selected" data-scenario="full" onclick="selectScenario('full')">
+          <div class="scenario-card-title">Até 2ª Instância</div>
+          <div class="scenario-card-desc">Tramitação completa</div>
+        </div>
+        <div class="scenario-card" data-scenario="hearing" onclick="selectScenario('hearing')">
+          <div class="scenario-card-title">Acordo na Audiência</div>
+          <div class="scenario-card-desc">Homologado em audiência</div>
+        </div>
+        <div class="scenario-card" data-scenario="prehearing" onclick="selectScenario('prehearing')">
+          <div class="scenario-card-title">Acordo Pré-Audiência</div>
+          <div class="scenario-card-desc">Antes da 1ª audiência</div>
+        </div>
+      </div>
+      
+      <div class="section-title" style="margin-top: 28px;">Valores Fixos da Tabela Contratual</div>
+      
+      <div class="field">
+        <label for="fee-full">Fixo até 2ª Instância (Cláusula 3.1, "a")</label>
+        <div class="currency-input">
+          <input type="text" id="fee-full" placeholder="0,00" inputmode="decimal">
+        </div>
+      </div>
+      
+      <div class="field-row">
+        <div class="field">
+          <label for="fee-hearing">Fixo — Acordo na Audiência</label>
+          <div class="currency-input">
+            <input type="text" id="fee-hearing" placeholder="0,00" inputmode="decimal">
+          </div>
+        </div>
+        
+        <div class="field">
+          <label for="fee-prehearing">Fixo — Acordo Pré-Audiência</label>
+          <div class="currency-input">
+            <input type="text" id="fee-prehearing" placeholder="0,00" inputmode="decimal">
+          </div>
+        </div>
+      </div>
+      
+      <div class="section-title" style="margin-top: 28px;">Êxito sobre Dano Reduzido</div>
+      
+      <div class="field-row">
+        <div class="field">
+          <label for="success-percent">Percentual de Êxito</label>
+          <div class="percent-input">
+            <input type="text" id="success-percent" value="15" inputmode="decimal">
+          </div>
+          <div class="hint">Padrão Arrais: 15%</div>
+        </div>
+        
+        <div class="field">
+          <label for="gate-percent">Gatilho Mínimo de Redução</label>
+          <div class="percent-input">
+            <input type="text" id="gate-percent" value="50" inputmode="decimal">
+          </div>
+          <div class="hint">Recomendado: 50%</div>
+        </div>
+      </div>
+      
+      <div class="field">
+        <label for="claimed-value">Valor Liquidado dos Pedidos (VLP)</label>
+        <div class="currency-input">
+          <input type="text" id="claimed-value" placeholder="0,00" inputmode="decimal">
+        </div>
+        <div class="hint">Somatório de todos os pedidos da petição inicial, atualizado.</div>
+      </div>
+      
+      <div class="field">
+        <label for="condemnation-value">Valor da Condenação ou Acordo (VC)</label>
+        <div class="currency-input">
+          <input type="text" id="condemnation-value" placeholder="0,00" inputmode="decimal">
+        </div>
+        <div class="hint">Use 0 (zero) em caso de improcedência total.</div>
+      </div>
+      
+      <div class="section-title" style="margin-top: 28px;">Parceria (opcional)</div>
+      
+      <div class="field-row">
+        <div class="field">
+          <label for="partnership-active">Tem advogado parceiro?</label>
+          <select id="partnership-active">
+            <option value="no">Não</option>
+            <option value="yes">Sim</option>
+          </select>
+        </div>
+        
+        <div class="field">
+          <label for="arrais-share">% do Arrais</label>
+          <div class="percent-input">
+            <input type="text" id="arrais-share" value="50" inputmode="decimal">
+          </div>
+          <div class="hint">Ex.: 50 = 50/50; 70 = 70/30</div>
+        </div>
+      </div>
+      
+      <div class="actions">
+        <button class="btn-primary" onclick="calculate()">Calcular</button>
+        <button class="btn-secondary" onclick="saveCase()">Salvar Caso</button>
+        <button class="btn-danger" onclick="clearForm()">Limpar</button>
+      </div>
+      
+    </div>
+    
+    <div class="panel panel-output">
+      
+      <div class="section-title">Resultado da Simulação</div>
+      
+      <div id="results-container">
+        <div class="empty-state" style="padding: 40px 20px;">
+          Preencha os dados e clique em <strong>Calcular</strong> para ver a simulação.
+        </div>
+      </div>
+      
+      <div id="scenarios-container" style="display: none;">
+        <div class="section-title" style="margin-top: 24px;">Cenários Comparativos de Resultado</div>
+        <div class="info-box" style="margin-bottom: 0;">
+          Variação do total cobrado conforme o resultado obtido (mantendo o cenário de encerramento selecionado).
+        </div>
+        <table class="scenarios-table">
+          <thead>
+            <tr>
+              <th>Cenário</th>
+              <th>Condenação</th>
+              <th>Redução</th>
+              <th>Êxito</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="scenarios-body"></tbody>
+        </table>
+      </div>
+      
+      <div class="section-title" style="margin-top: 28px;">Casos Salvos</div>
+      <div id="saved-list" class="saved-list">
+        <div class="empty-state">Nenhum caso salvo ainda.</div>
+      </div>
+      
+    </div>
+    
+  </div>
+  
+  <footer>
+    Arrais Advogados · Cálculos baseados em modelagem contratual fixo + êxito sobre dano reduzido<br>
+    Os dados ficam salvos automaticamente no seu navegador (não são enviados a nenhum servidor).
+  </footer>
+  
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+  let currentScenario = 'full';
+  
+  function formatCurrency(value) {
+    if (value === null || value === undefined || isNaN(value)) return 'R$ 0,00';
+    return 'R$ ' + value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  
+  function formatNumber(value) {
+    if (value === null || value === undefined || isNaN(value)) return '0,00';
+    return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  
+  function parseNumberInput(str) {
+    if (!str) return 0;
+    str = String(str).trim().replace(/\./g, '').replace(',', '.');
+    const num = parseFloat(str);
+    return isNaN(num) ? 0 : num;
+  }
+  
+  function applyCurrencyMask(input) {
+    input.addEventListener('input', function(e) {
+      let val = e.target.value.replace(/\D/g, '');
+      if (val === '') { e.target.value = ''; return; }
+      val = (parseInt(val) / 100).toFixed(2);
+      val = val.replace('.', ',');
+      val = val.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+      e.target.value = val;
+    });
+  }
+  
+  document.querySelectorAll('.currency-input input').forEach(applyCurrencyMask);
+  
+  document.querySelectorAll('.percent-input input').forEach(input => {
+    input.addEventListener('blur', function(e) {
+      const val = parseNumberInput(e.target.value);
+      if (val > 0) e.target.value = formatNumber(val).replace(',00', '');
+    });
+  });
+  
+  function selectScenario(scenario) {
+    currentScenario = scenario;
+    document.querySelectorAll('.scenario-card').forEach(card => {
+      card.classList.toggle('selected', card.dataset.scenario === scenario);
+    });
+    saveFormState();
+    
+    const i = getInputs();
+    if (i.feeFull > 0 || i.feeHearing > 0 || i.feePrehearing > 0 || i.claimedValue > 0) {
+      calculate();
+    }
+  }
+  
+  function getInputs() {
+    return {
+      caseName: document.getElementById('case-name').value.trim(),
+      scenario: currentScenario,
+      feeFull: parseNumberInput(document.getElementById('fee-full').value),
+      feeHearing: parseNumberInput(document.getElementById('fee-hearing').value),
+      feePrehearing: parseNumberInput(document.getElementById('fee-prehearing').value),
+      successPercent: parseNumberInput(document.getElementById('success-percent').value),
+      gatePercent: parseNumberInput(document.getElementById('gate-percent').value),
+      claimedValue: parseNumberInput(document.getElementById('claimed-value').value),
+      condemnationValue: parseNumberInput(document.getElementById('condemnation-value').value),
+      partnershipActive: document.getElementById('partnership-active').value === 'yes',
+      arraisShare: parseNumberInput(document.getElementById('arrais-share').value)
+    };
+  }
+  
+  function getActiveFee(inputs) {
+    if (inputs.scenario === 'prehearing') return inputs.feePrehearing;
+    if (inputs.scenario === 'hearing') return inputs.feeHearing;
+    return inputs.feeFull;
+  }
+  
+  function getScenarioLabel(scenario) {
+    if (scenario === 'prehearing') return 'Acordo Pré-Audiência';
+    if (scenario === 'hearing') return 'Acordo na Audiência';
+    return 'Tramitação até 2ª Instância';
+  }
+  
+  function compute(inputs) {
+    const fixedFee = getActiveFee(inputs);
+    const danoReduzido = Math.max(0, inputs.claimedValue - inputs.condemnationValue);
+    const reducaoPercentual = inputs.claimedValue > 0 ? (danoReduzido / inputs.claimedValue) * 100 : 0;
+    const gateAtingido = reducaoPercentual >= inputs.gatePercent;
+    const exito = gateAtingido ? danoReduzido * (inputs.successPercent / 100) : 0;
+    const totalBruto = fixedFee + exito;
+    
+    let arraisRecebe = totalBruto;
+    let parceiroRecebe = 0;
+    if (inputs.partnershipActive) {
+      arraisRecebe = totalBruto * (inputs.arraisShare / 100);
+      parceiroRecebe = totalBruto - arraisRecebe;
+    }
+    
+    return { fixedFee, danoReduzido, reducaoPercentual, gateAtingido, exito, totalBruto, arraisRecebe, parceiroRecebe };
+  }
+  
+  function calculate() {
+    const inputs = getInputs();
+    const activeFee = getActiveFee(inputs);
+    
+    if (activeFee === 0 && inputs.claimedValue === 0) {
+      showToast('Preencha o valor fixo do cenário e o valor liquidado dos pedidos.', 'warning');
+      return;
+    }
+    
+    const result = compute(inputs);
+    renderResults(inputs, result);
+    renderScenarios(inputs);
+  }
+  
+  function renderResults(inputs, result) {
+    const container = document.getElementById('results-container');
+    
+    const reductionBadge = result.gateAtingido 
+      ? '<span class="badge badge-success">Gatilho atingido</span>'
+      : '<span class="badge badge-warning">Abaixo do gatilho</span>';
+    
+    const scenarioBadge = `<span class="badge badge-info">${getScenarioLabel(inputs.scenario)}</span>`;
+    
+    let partnershipHTML = '';
+    if (inputs.partnershipActive) {
+      partnershipHTML = `
+        <div class="partnership-section">
+          <div class="section-title">Após Divisão da Parceria</div>
+          <div class="result-row">
+            <span class="result-label">Arrais Advogados (${inputs.arraisShare}%)</span>
+            <span class="result-value">${formatCurrency(result.arraisRecebe)}</span>
+          </div>
+          <div class="result-row" style="margin-top: 8px;">
+            <span class="result-label">Parceiro (${100 - inputs.arraisShare}%)</span>
+            <span class="result-value" style="color: var(--text-muted); font-size: 15px;">${formatCurrency(result.parceiroRecebe)}</span>
+          </div>
+        </div>
+      `;
+    }
+    
+    let gateWarningHTML = '';
+    if (!result.gateAtingido && inputs.claimedValue > 0) {
+      gateWarningHTML = `
+        <div class="gate-warning">
+          <strong>Êxito não devido:</strong> a redução de ${formatNumber(result.reducaoPercentual)}% 
+          ficou abaixo do gatilho mínimo de ${formatNumber(inputs.gatePercent)}% pactuado em contrato. 
+          Apenas o honorário fixo é devido.
+        </div>
+      `;
+    }
+    
+    container.innerHTML = `
+      <div class="result-card">
+        <div class="result-row">
+          <span class="result-label">Cenário de Encerramento</span>
+          <span class="result-value" style="font-size: 14px;">${scenarioBadge}</span>
+        </div>
+      </div>
+      
+      <div class="result-card">
+        <div class="result-row">
+          <span class="result-label">Dano Econômico Reduzido (DER)</span>
+          <span class="result-value">${formatCurrency(result.danoReduzido)}</span>
+        </div>
+        <div class="result-detail">
+          Redução de ${formatNumber(result.reducaoPercentual)}% sobre o valor liquidado dos pedidos ${reductionBadge}
+        </div>
+      </div>
+      
+      <div class="result-card">
+        <div class="result-row">
+          <span class="result-label">Honorário Fixo Aplicável</span>
+          <span class="result-value">${formatCurrency(result.fixedFee)}</span>
+        </div>
+        <div class="result-detail">Valor do cenário "${getScenarioLabel(inputs.scenario)}"</div>
+      </div>
+      
+      <div class="result-card">
+        <div class="result-row">
+          <span class="result-label">Honorário de Êxito (${formatNumber(inputs.successPercent)}%)</span>
+          <span class="result-value">${formatCurrency(result.exito)}</span>
+        </div>
+        ${result.gateAtingido 
+          ? `<div class="result-detail">${formatNumber(inputs.successPercent)}% sobre ${formatCurrency(result.danoReduzido)}</div>` 
+          : '<div class="result-detail">Gatilho não atingido — êxito zerado.</div>'}
+      </div>
+      
+      <div class="result-card highlight">
+        <div class="result-row">
+          <span class="result-label">Total Bruto Cobrado do Cliente</span>
+          <span class="result-value large">${formatCurrency(result.totalBruto)}</span>
+        </div>
+        <div class="result-detail">Fixo (${getScenarioLabel(inputs.scenario)}) + Êxito</div>
+      </div>
+      
+      ${gateWarningHTML}
+      ${partnershipHTML}
+    `;
+  }
+  
+  function renderScenarios(inputs) {
+    if (inputs.claimedValue === 0) {
+      document.getElementById('scenarios-container').style.display = 'none';
+      return;
+    }
+    
+    const scenarios = [
+      { name: 'Improcedência total', condemnation: 0 },
+      { name: 'Redução de 90%', condemnation: inputs.claimedValue * 0.10 },
+      { name: 'Redução de 75%', condemnation: inputs.claimedValue * 0.25 },
+      { name: 'Redução de 60%', condemnation: inputs.claimedValue * 0.40 },
+      { name: 'Redução de 50% (gatilho)', condemnation: inputs.claimedValue * 0.50 },
+      { name: 'Redução de 30% (sem êxito)', condemnation: inputs.claimedValue * 0.70 },
+      { name: 'Procedência total', condemnation: inputs.claimedValue }
+    ];
+    
+    const tbody = document.getElementById('scenarios-body');
+    tbody.innerHTML = scenarios.map(s => {
+      const r = compute({ ...inputs, condemnationValue: s.condemnation });
+      const cls = r.gateAtingido ? '' : 'below-gate';
+      return `
+        <tr>
+          <td class="scenario-name">${s.name}</td>
+          <td>${formatCurrency(s.condemnation)}</td>
+          <td>${formatNumber(r.reducaoPercentual)}%</td>
+          <td class="${cls}">${formatCurrency(r.exito)}</td>
+          <td><strong>${formatCurrency(r.totalBruto)}</strong></td>
+        </tr>
+      `;
+    }).join('');
+    
+    document.getElementById('scenarios-container').style.display = 'block';
+  }
+  
+  const STORAGE_KEY = 'arrais_calc_cases_v2';
+  const FORM_KEY = 'arrais_calc_form_v2';
+  
+  function saveCase() {
+    const inputs = getInputs();
+    const activeFee = getActiveFee(inputs);
+    
+    if (!inputs.caseName) {
+      showToast('Informe um nome/identificação para o caso antes de salvar.', 'warning');
+      document.getElementById('case-name').focus();
+      return;
+    }
+    
+    if (activeFee === 0 && inputs.claimedValue === 0) {
+      showToast('Preencha o valor fixo do cenário e o valor liquidado dos pedidos.', 'warning');
+      return;
+    }
+    
+    const result = compute(inputs);
+    const cases = loadCases();
+    
+    const newCase = { id: Date.now(), ...inputs, result, savedAt: new Date().toISOString() };
+    
+    cases.unshift(newCase);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cases));
+    
+    renderSavedList();
+    showToast('Caso salvo com sucesso.');
+  }
+  
+  function loadCases() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEY);
+      return data ? JSON.parse(data) : [];
+    } catch (e) { return []; }
+  }
+  
+  function deleteCase(id, event) {
+    event.stopPropagation();
+    if (!confirm('Deseja remover este caso?')) return;
+    const cases = loadCases().filter(c => c.id !== id);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cases));
+    renderSavedList();
+    showToast('Caso removido.');
+  }
+  
+  function loadCaseById(id) {
+    const c = loadCases().find(c => c.id === id);
+    if (!c) return;
+    
+    document.getElementById('case-name').value = c.caseName || '';
+    document.getElementById('fee-full').value = c.feeFull ? formatNumber(c.feeFull) : '';
+    document.getElementById('fee-hearing').value = c.feeHearing ? formatNumber(c.feeHearing) : '';
+    document.getElementById('fee-prehearing').value = c.feePrehearing ? formatNumber(c.feePrehearing) : '';
+    document.getElementById('success-percent').value = c.successPercent || 15;
+    document.getElementById('gate-percent').value = c.gatePercent || 50;
+    document.getElementById('claimed-value').value = c.claimedValue ? formatNumber(c.claimedValue) : '';
+    document.getElementById('condemnation-value').value = c.condemnationValue !== undefined ? formatNumber(c.condemnationValue) : '';
+    document.getElementById('partnership-active').value = c.partnershipActive ? 'yes' : 'no';
+    document.getElementById('arrais-share').value = c.arraisShare || 50;
+    
+    selectScenario(c.scenario || 'full');
+    calculate();
+    showToast('Caso carregado.');
+  }
+  
+  function renderSavedList() {
+    const cases = loadCases();
+    const container = document.getElementById('saved-list');
+    
+    if (cases.length === 0) {
+      container.innerHTML = '<div class="empty-state">Nenhum caso salvo ainda.</div>';
+      return;
+    }
+    
+    container.innerHTML = cases.map(c => {
+      const date = new Date(c.savedAt).toLocaleDateString('pt-BR');
+      const total = c.result ? formatCurrency(c.result.totalBruto) : '-';
+      const sc = getScenarioLabel(c.scenario || 'full');
+      return `
+        <div class="saved-item" onclick="loadCaseById(${c.id})">
+          <div>
+            <div class="label">${escapeHtml(c.caseName)}</div>
+            <div class="meta">${date} · ${sc} · Total: ${total}</div>
+          </div>
+          <button class="delete-btn" onclick="deleteCase(${c.id}, event)" title="Remover">×</button>
+        </div>
+      `;
+    }).join('');
+  }
+  
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+  
+  function saveFormState() {
+    const inputs = getInputs();
+    localStorage.setItem(FORM_KEY, JSON.stringify(inputs));
+  }
+  
+  function loadFormState() {
+    try {
+      const data = localStorage.getItem(FORM_KEY);
+      if (!data) return;
+      const c = JSON.parse(data);
+      
+      document.getElementById('case-name').value = c.caseName || '';
+      document.getElementById('fee-full').value = c.feeFull ? formatNumber(c.feeFull) : '';
+      document.getElementById('fee-hearing').value = c.feeHearing ? formatNumber(c.feeHearing) : '';
+      document.getElementById('fee-prehearing').value = c.feePrehearing ? formatNumber(c.feePrehearing) : '';
+      document.getElementById('success-percent').value = c.successPercent || 15;
+      document.getElementById('gate-percent').value = c.gatePercent || 50;
+      document.getElementById('claimed-value').value = c.claimedValue ? formatNumber(c.claimedValue) : '';
+      document.getElementById('condemnation-value').value = c.condemnationValue !== undefined && c.condemnationValue !== null ? formatNumber(c.condemnationValue) : '';
+      document.getElementById('partnership-active').value = c.partnershipActive ? 'yes' : 'no';
+      document.getElementById('arrais-share').value = c.arraisShare || 50;
+      
+      if (c.scenario) selectScenario(c.scenario);
+    } catch (e) {}
+  }
+  
+  document.querySelectorAll('input, select').forEach(el => {
+    el.addEventListener('change', saveFormState);
+    el.addEventListener('input', saveFormState);
+  });
+  
+  function clearForm() {
+    if (!confirm('Deseja limpar todos os campos do formulário?')) return;
+    
+    document.getElementById('case-name').value = '';
+    document.getElementById('fee-full').value = '';
+    document.getElementById('fee-hearing').value = '';
+    document.getElementById('fee-prehearing').value = '';
+    document.getElementById('success-percent').value = '15';
+    document.getElementById('gate-percent').value = '50';
+    document.getElementById('claimed-value').value = '';
+    document.getElementById('condemnation-value').value = '';
+    document.getElementById('partnership-active').value = 'no';
+    document.getElementById('arrais-share').value = '50';
+    
+    selectScenario('full');
+    
+    document.getElementById('results-container').innerHTML = `
+      <div class="empty-state" style="padding: 40px 20px;">
+        Preencha os dados e clique em <strong>Calcular</strong> para ver a simulação.
+      </div>
+    `;
+    document.getElementById('scenarios-container').style.display = 'none';
+    
+    localStorage.removeItem(FORM_KEY);
+  }
+  
+  function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.style.background = type === 'warning' ? 'var(--warning)' : 'var(--success)';
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2500);
+  }
+  
+  loadFormState();
+  renderSavedList();
+  
+  const initial = getInputs();
+  if (initial.feeFull > 0 || initial.feeHearing > 0 || initial.feePrehearing > 0 || initial.claimedValue > 0) {
+    setTimeout(calculate, 100);
+  }
+  
+  document.querySelectorAll('input').forEach(input => {
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        calculate();
+      }
+    });
+  });
+</script>
+
+</body>
+</html>
