@@ -506,6 +506,101 @@
   }
   
   .toast.show { opacity: 1; transform: translateY(0); }
+
+  /* ============ DOCUMENTO PARA O CLIENTE (PDF / impressão) ============ */
+  #print-area { display: none; }
+
+  @media print {
+    @page { size: A4 portrait; margin: 16mm 15mm; }
+
+    html, body { background: #fff !important; }
+    body { font-size: 10.5pt; color: #000; }
+    .container > *:not(#print-area), .toast { display: none !important; }
+    #print-area { display: block !important; }
+
+    .pdf-head {
+      border-bottom: 2px solid var(--navy);
+      padding-bottom: 10px;
+      margin-bottom: 18px;
+    }
+    .pdf-firm {
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 15pt;
+      font-weight: 700;
+      color: var(--navy);
+      letter-spacing: 0.02em;
+    }
+    .pdf-oab { font-size: 8.5pt; color: #444; margin-top: 2px; letter-spacing: 0.04em; text-transform: uppercase; }
+    .pdf-doctitle { font-size: 12pt; font-weight: 700; color: var(--navy); margin-top: 12px; }
+    .pdf-sub { font-size: 9pt; color: #444; margin-top: 3px; }
+
+    .pdf-section {
+      font-size: 9pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--navy);
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 4px;
+      margin: 20px 0 8px;
+      page-break-after: avoid;
+    }
+
+    .pdf-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 4px 0;
+      border-bottom: 1px dotted #ddd;
+      page-break-inside: avoid;
+    }
+    .pdf-row .k { color: #333; }
+    .pdf-row .v { font-weight: 600; text-align: right; white-space: nowrap; }
+    .pdf-row.total {
+      border: 1px solid var(--navy);
+      background: #f2f4f8;
+      padding: 9px 10px;
+      margin-top: 10px;
+      border-bottom: 1px solid var(--navy);
+    }
+    .pdf-row.total .k { font-weight: 700; color: var(--navy); }
+    .pdf-row.total .v { font-size: 13pt; color: var(--navy); }
+    .pdf-note { font-size: 8.5pt; color: #333; margin-top: 6px; line-height: 1.45; }
+
+    .pdf-alert {
+      border-left: 3px solid var(--warning);
+      background: #fdf8ec;
+      padding: 8px 10px;
+      font-size: 9pt;
+      margin-top: 10px;
+      page-break-inside: avoid;
+    }
+
+    table.pdf-table { width: 100%; border-collapse: collapse; font-size: 9pt; page-break-inside: auto; }
+    table.pdf-table th {
+      text-align: left;
+      background: var(--navy);
+      color: #fff;
+      padding: 6px 7px;
+      font-size: 8pt;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    table.pdf-table td { padding: 5px 7px; border-bottom: 1px solid #e2e2e2; }
+    table.pdf-table td.num, table.pdf-table th.num { text-align: right; white-space: nowrap; }
+    table.pdf-table tr { page-break-inside: avoid; }
+    table.pdf-table tr.is-current td { background: #f2f4f8; font-weight: 700; }
+
+    .pdf-foot {
+      margin-top: 22px;
+      padding-top: 8px;
+      border-top: 1px solid #ccc;
+      font-size: 8pt;
+      color: #444;
+      line-height: 1.5;
+      page-break-inside: avoid;
+    }
+  }
 </style>
 </head>
 <body>
@@ -517,7 +612,7 @@
       <h1>Calculadora de Honorários — Defesa Trabalhista</h1>
       <p>Arrais Advogados · Modelo Fixo Único + Redutores Automáticos</p>
     </div>
-    <span class="version">v2.1</span>
+    <span class="version">v2.2</span>
   </header>
   
   <div class="main-grid">
@@ -657,6 +752,7 @@
         <button class="btn-primary" onclick="calculate()">Calcular</button>
         <button class="btn-secondary" onclick="saveCase()">Salvar Caso</button>
         <button class="btn-secondary" onclick="openFullscreen()">Abrir em Tela Cheia</button>
+        <button class="btn-secondary" onclick="generatePdf()">Gerar PDF do Cliente</button>
         <button class="btn-danger" onclick="clearForm()">Limpar</button>
       </div>
       
@@ -707,11 +803,13 @@
   </div>
   
   <footer>
-    Arrais Advogados · Calculadora v2.1 · Modelo Fixo Único + Redutores Automáticos<br>
+    Arrais Advogados · Calculadora v2.2 · Modelo Fixo Único + Redutores Automáticos<br>
     Os dados ficam salvos no seu navegador (não são enviados a nenhum servidor). Para levar um cálculo para outra aba ou outra pessoa, use <strong>Abrir em Tela Cheia</strong> ou o botão <strong>link</strong> do caso salvo.
   </footer>
   
 </div>
+
+<div id="print-area"></div>
 
 <div id="toast" class="toast"></div>
 
@@ -1004,15 +1102,7 @@
       return;
     }
 
-    const scenarios = [
-      { name: 'Improcedência total', condemnation: 0 },
-      { name: 'Redução de 90%', condemnation: inputs.claimedValue * 0.10 },
-      { name: 'Redução de 75%', condemnation: inputs.claimedValue * 0.25 },
-      { name: 'Redução de 60%', condemnation: inputs.claimedValue * 0.40 },
-      { name: 'Redução de 50% (gatilho)', condemnation: inputs.claimedValue * 0.50 },
-      { name: 'Redução de 30% (sem êxito)', condemnation: inputs.claimedValue * 0.70 },
-      { name: 'Procedência total', condemnation: inputs.claimedValue }
-    ];
+    const scenarios = getComparativeScenarios(inputs);
 
     const tbody = document.getElementById('scenarios-body');
     tbody.innerHTML = scenarios.map(s => {
@@ -1237,6 +1327,153 @@
     toast.style.background = type === 'warning' ? 'var(--warning)' : 'var(--success)';
     toast.classList.add('show');
     setTimeout(() => toast.classList.remove('show'), 3500);
+  }
+
+
+  /* ============================================================
+     DOCUMENTO PARA O CLIENTE
+     Monta uma versão limpa da simulação e chama a impressão do
+     navegador — em "Destino", o cliente escolhe "Salvar como PDF".
+     Não inclui a divisão da parceria (informação interna).
+     ============================================================ */
+
+  function getComparativeScenarios(inputs) {
+    return [
+      { name: 'Improcedência total', condemnation: 0 },
+      { name: 'Redução de 90%', condemnation: inputs.claimedValue * 0.10 },
+      { name: 'Redução de 75%', condemnation: inputs.claimedValue * 0.25 },
+      { name: 'Redução de 60%', condemnation: inputs.claimedValue * 0.40 },
+      { name: 'Redução de 50% (gatilho)', condemnation: inputs.claimedValue * 0.50 },
+      { name: 'Redução de 30% (sem êxito)', condemnation: inputs.claimedValue * 0.70 },
+      { name: 'Procedência total', condemnation: inputs.claimedValue }
+    ];
+  }
+
+  function buildPrintDocument(inputs, result) {
+    const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    const premissas = [
+      ['Honorário fixo de referência (atuação até 2ª instância)', formatCurrency(inputs.referenceFee)],
+      ['Fase de encerramento considerada', getScenarioLabel(inputs.scenario)],
+      ['Redutor aplicado ao honorário fixo', formatPercent(result.reducer) + '%'],
+      ['Valor liquidado dos pedidos (VLP)', formatCurrency(inputs.claimedValue)],
+      ['Valor da condenação ou acordo (VC)', formatCurrency(inputs.condemnationValue)],
+      ['Percentual de êxito contratado', formatPercent(inputs.successPercent) + '%'],
+      ['Gatilho mínimo de redução', formatPercent(inputs.gatePercent) + '%']
+    ].map(r => `<div class="pdf-row"><span class="k">${r[0]}</span><span class="v">${r[1]}</span></div>`).join('');
+
+    const alerta = (!result.gateAtingido && inputs.claimedValue > 0)
+      ? `<div class="pdf-alert"><strong>Honorário de êxito não devido.</strong> A redução obtida de
+         ${formatNumber(result.reducaoPercentual)}% ficou abaixo do gatilho mínimo de
+         ${formatNumber(inputs.gatePercent)}% previsto em contrato. Nesta hipótese é devido apenas o honorário fixo.</div>`
+      : '';
+
+    let tabela = '';
+    if (inputs.claimedValue > 0) {
+      const linhas = getComparativeScenarios(inputs).map(s => {
+        const r = compute({ ...inputs, condemnationValue: s.condemnation });
+        const atual = Math.abs(s.condemnation - inputs.condemnationValue) < 0.01 ? ' class="is-current"' : '';
+        return `<tr${atual}>
+            <td>${s.name}</td>
+            <td class="num">${formatCurrency(s.condemnation)}</td>
+            <td class="num">${formatNumber(r.reducaoPercentual)}%</td>
+            <td class="num">${formatCurrency(r.exito)}</td>
+            <td class="num"><strong>${formatCurrency(r.totalBruto)}</strong></td>
+          </tr>`;
+      }).join('');
+
+      tabela = `
+        <div class="pdf-section">Projeção conforme o resultado obtido</div>
+        <table class="pdf-table">
+          <thead>
+            <tr>
+              <th>Resultado do processo</th>
+              <th class="num">Condenação/Acordo</th>
+              <th class="num">Redução</th>
+              <th class="num">Êxito</th>
+              <th class="num">Total</th>
+            </tr>
+          </thead>
+          <tbody>${linhas}</tbody>
+        </table>
+        <div class="pdf-note">
+          Projeção elaborada mantendo a mesma fase de encerramento
+          (${getScenarioLabel(inputs.scenario)}). A linha destacada corresponde ao cenário informado nesta simulação.
+        </div>`;
+    }
+
+    document.getElementById('print-area').innerHTML = `
+      <div class="pdf-head">
+        <div class="pdf-firm">Arrais Advogados</div>
+        <div class="pdf-oab">Advocacia Trabalhista e Previdenciária · OAB/MG 19.391</div>
+        <div class="pdf-doctitle">Simulação de Honorários Advocatícios — Defesa Trabalhista</div>
+        <div class="pdf-sub">
+          ${inputs.caseName ? escapeHtml(inputs.caseName) + ' · ' : ''}Emitida em ${hoje}
+        </div>
+      </div>
+
+      <div class="pdf-section">Premissas utilizadas</div>
+      ${premissas}
+
+      <div class="pdf-section">Composição dos honorários</div>
+      <div class="pdf-row">
+        <span class="k">Honorário fixo aplicável${result.reducer === 100 ? '' : ' (após redutor de ' + formatPercent(result.reducer) + '%)'}</span>
+        <span class="v">${formatCurrency(result.fixedFee)}</span>
+      </div>
+      <div class="pdf-row">
+        <span class="k">Dano econômico reduzido — DER (VLP menos VC)</span>
+        <span class="v">${formatCurrency(result.danoReduzido)}</span>
+      </div>
+      <div class="pdf-row">
+        <span class="k">Redução obtida sobre o valor pedido</span>
+        <span class="v">${formatNumber(result.reducaoPercentual)}%</span>
+      </div>
+      <div class="pdf-row">
+        <span class="k">Honorário de êxito (${formatPercent(inputs.successPercent)}% sobre o DER)</span>
+        <span class="v">${formatCurrency(result.exito)}</span>
+      </div>
+      <div class="pdf-row total">
+        <span class="k">Total dos honorários</span>
+        <span class="v">${formatCurrency(result.totalBruto)}</span>
+      </div>
+      ${alerta}
+
+      ${tabela}
+
+      <div class="pdf-foot">
+        Documento de caráter meramente informativo, elaborado a pedido do cliente para esclarecer a
+        forma de cálculo dos honorários. Os valores são estimativos e variam conforme o resultado
+        efetivamente obtido no processo. Prevalecem, em qualquer hipótese, as condições do contrato
+        de honorários firmado entre as partes.<br>
+        Arrais Advogados · OAB/MG 19.391
+      </div>
+    `;
+  }
+
+  function generatePdf() {
+    const inputs = getInputs();
+
+    if (inputs.referenceFee === 0 && inputs.claimedValue === 0) {
+      showToast('Faça o cálculo antes de gerar o PDF.', 'warning');
+      return;
+    }
+
+    const result = compute(inputs);
+    buildPrintDocument(inputs, result);
+
+    const tituloAnterior = document.title;
+    const data = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+    const nome = inputs.caseName ? ' - ' + inputs.caseName.replace(/[\\/:*?"<>|]/g, '-') : '';
+    document.title = 'Simulacao de Honorarios' + nome + ' - ' + data;
+
+    function restaurar() {
+      document.title = tituloAnterior;
+      window.removeEventListener('afterprint', restaurar);
+    }
+    window.addEventListener('afterprint', restaurar);
+
+    window.print();
+    setTimeout(restaurar, 1500);
   }
 
   // Boot: o caso vindo pela URL tem prioridade sobre o estado local.
