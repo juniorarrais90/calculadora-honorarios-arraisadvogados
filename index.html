@@ -407,6 +407,21 @@
   
   .saved-item .delete-btn:hover { background: #ffe5e5; border-radius: 3px; }
   
+  .saved-item-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+  
+  .saved-item .link-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px 6px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  
+  .saved-item .link-btn:hover { color: var(--navy); background: #f0efe6; border-radius: 3px; }
+  
   .empty-state {
     padding: 20px;
     text-align: center;
@@ -502,7 +517,7 @@
       <h1>Calculadora de Honorários — Defesa Trabalhista</h1>
       <p>Arrais Advogados · Modelo Fixo Único + Redutores Automáticos</p>
     </div>
-    <span class="version">v2.0</span>
+    <span class="version">v2.1</span>
   </header>
   
   <div class="main-grid">
@@ -641,7 +656,14 @@
       <div class="actions">
         <button class="btn-primary" onclick="calculate()">Calcular</button>
         <button class="btn-secondary" onclick="saveCase()">Salvar Caso</button>
+        <button class="btn-secondary" onclick="openFullscreen()">Abrir em Tela Cheia</button>
         <button class="btn-danger" onclick="clearForm()">Limpar</button>
+      </div>
+      
+      <div class="hint" style="margin-top: 10px;">
+        Para ver o cálculo em tela cheia, use o botão <strong>Abrir em Tela Cheia</strong> acima:
+        ele leva o caso no próprio endereço. Abrir a calculadora por fora do painel
+        não transporta o cálculo — o navegador mantém armazenamentos separados.
       </div>
       
     </div>
@@ -685,8 +707,8 @@
   </div>
   
   <footer>
-    Arrais Advogados · Calculadora v2.0 · Modelo Fixo Único + Redutores Automáticos<br>
-    Os dados ficam salvos automaticamente no seu navegador (não são enviados a nenhum servidor).
+    Arrais Advogados · Calculadora v2.1 · Modelo Fixo Único + Redutores Automáticos<br>
+    Os dados ficam salvos no seu navegador (não são enviados a nenhum servidor). Para levar um cálculo para outra aba ou outra pessoa, use <strong>Abrir em Tela Cheia</strong> ou o botão <strong>link</strong> do caso salvo.
   </footer>
   
 </div>
@@ -695,24 +717,46 @@
 
 <script>
   let currentScenario = 'full';
-  
+  let restoring = false;
+
   function formatCurrency(value) {
     if (value === null || value === undefined || isNaN(value)) return 'R$ 0,00';
     return 'R$ ' + value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
-  
+
   function formatNumber(value) {
     if (value === null || value === undefined || isNaN(value)) return '0,00';
     return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
-  
+
+  function formatPercent(value) {
+    return formatNumber(value).replace(',00', '');
+  }
+
   function parseNumberInput(str) {
-    if (!str) return 0;
+    if (str === null || str === undefined) return 0;
     str = String(str).trim().replace(/\./g, '').replace(',', '.');
+    if (str === '') return 0;
     const num = parseFloat(str);
     return isNaN(num) ? 0 : num;
   }
-  
+
+  // Lê um campo numérico. O padrão só entra quando o campo está VAZIO.
+  // Zero digitado pelo usuário é preservado como zero.
+  function fieldNumber(id, fallback) {
+    const raw = String(document.getElementById(id).value || '').trim();
+    if (raw === '') return fallback;
+    const n = parseNumberInput(raw);
+    return isNaN(n) ? fallback : n;
+  }
+
+  // Lê um número vindo de um objeto salvo. Zero é zero, não vira padrão.
+  function pickNumber(value, fallback) {
+    if (value === null || value === undefined || value === '') return fallback;
+    const n = typeof value === 'number' ? value : parseNumberInput(value);
+    return isNaN(n) ? fallback : n;
+  }
+
   function applyCurrencyMask(input) {
     input.addEventListener('input', function(e) {
       let val = e.target.value.replace(/\D/g, '');
@@ -723,81 +767,115 @@
       e.target.value = val;
     });
   }
-  
+
   document.querySelectorAll('.currency-input input').forEach(applyCurrencyMask);
-  
+
   document.querySelectorAll('.percent-input input').forEach(input => {
     input.addEventListener('blur', function(e) {
-      const val = parseNumberInput(e.target.value);
-      if (val > 0) e.target.value = formatNumber(val).replace(',00', '');
+      const raw = String(e.target.value || '').trim();
+      if (raw === '') return;
+      e.target.value = formatPercent(parseNumberInput(raw));
     });
   });
-  
+
   function toggleReducers() {
     const fields = document.getElementById('reducers-fields');
     fields.classList.toggle('expanded');
     const btn = document.querySelector('.reducers-config-toggle');
     btn.textContent = fields.classList.contains('expanded') ? 'Ocultar' : 'Ajustar';
   }
-  
+
   function updateReducersDisplay() {
-    const reducerHearing = parseNumberInput(document.getElementById('reducer-hearing').value) || 70;
-    const reducerPrehearing = parseNumberInput(document.getElementById('reducer-prehearing').value) || 50;
-    
-    document.getElementById('summary-hearing').textContent = formatNumber(reducerHearing).replace(',00', '') + '%';
-    document.getElementById('summary-prehearing').textContent = formatNumber(reducerPrehearing).replace(',00', '') + '%';
-    document.getElementById('card-hearing-percent').textContent = formatNumber(reducerHearing).replace(',00', '') + '%';
-    document.getElementById('card-prehearing-percent').textContent = formatNumber(reducerPrehearing).replace(',00', '') + '%';
+    const reducerHearing = fieldNumber('reducer-hearing', 70);
+    const reducerPrehearing = fieldNumber('reducer-prehearing', 50);
+
+    document.getElementById('summary-hearing').textContent = formatPercent(reducerHearing) + '%';
+    document.getElementById('summary-prehearing').textContent = formatPercent(reducerPrehearing) + '%';
+    document.getElementById('card-hearing-percent').textContent = formatPercent(reducerHearing) + '%';
+    document.getElementById('card-prehearing-percent').textContent = formatPercent(reducerPrehearing) + '%';
   }
-  
+
   document.getElementById('reducer-hearing').addEventListener('input', updateReducersDisplay);
   document.getElementById('reducer-prehearing').addEventListener('input', updateReducersDisplay);
-  
+
   function selectScenario(scenario) {
     currentScenario = scenario;
     document.querySelectorAll('.scenario-card').forEach(card => {
       card.classList.toggle('selected', card.dataset.scenario === scenario);
     });
     saveFormState();
-    
+
     const i = getInputs();
     if (i.referenceFee > 0 || i.claimedValue > 0) {
       calculate();
     }
   }
-  
+
   function getInputs() {
     return {
       caseName: document.getElementById('case-name').value.trim(),
       scenario: currentScenario,
       referenceFee: parseNumberInput(document.getElementById('reference-fee').value),
-      reducerHearing: parseNumberInput(document.getElementById('reducer-hearing').value) || 70,
-      reducerPrehearing: parseNumberInput(document.getElementById('reducer-prehearing').value) || 50,
-      successPercent: parseNumberInput(document.getElementById('success-percent').value),
-      gatePercent: parseNumberInput(document.getElementById('gate-percent').value),
+      reducerHearing: fieldNumber('reducer-hearing', 70),
+      reducerPrehearing: fieldNumber('reducer-prehearing', 50),
+      successPercent: fieldNumber('success-percent', 15),
+      gatePercent: fieldNumber('gate-percent', 50),
       claimedValue: parseNumberInput(document.getElementById('claimed-value').value),
       condemnationValue: parseNumberInput(document.getElementById('condemnation-value').value),
       partnershipActive: document.getElementById('partnership-active').value === 'yes',
-      arraisShare: parseNumberInput(document.getElementById('arrais-share').value)
+      arraisShare: fieldNumber('arrais-share', 50)
     };
   }
-  
+
+  // Ponto ÚNICO de restauração de estado. Usado pelo hash da URL,
+  // pelo estado do formulário e pelos casos salvos — para que os três
+  // caminhos produzam exatamente os mesmos campos.
+  function applyState(c) {
+    if (!c) return;
+    restoring = true;
+    try {
+      const referenceFee = pickNumber(c.referenceFee, 0);
+      const claimedValue = pickNumber(c.claimedValue, 0);
+      const condemnationValue = pickNumber(c.condemnationValue, 0);
+
+      document.getElementById('case-name').value = c.caseName || '';
+      document.getElementById('reference-fee').value = referenceFee ? formatNumber(referenceFee) : '';
+      document.getElementById('reducer-hearing').value = formatPercent(pickNumber(c.reducerHearing, 70));
+      document.getElementById('reducer-prehearing').value = formatPercent(pickNumber(c.reducerPrehearing, 50));
+      document.getElementById('success-percent').value = formatPercent(pickNumber(c.successPercent, 15));
+      document.getElementById('gate-percent').value = formatPercent(pickNumber(c.gatePercent, 50));
+      document.getElementById('claimed-value').value = claimedValue ? formatNumber(claimedValue) : '';
+      document.getElementById('condemnation-value').value = formatNumber(condemnationValue);
+      document.getElementById('partnership-active').value = c.partnershipActive ? 'yes' : 'no';
+      document.getElementById('arrais-share').value = formatPercent(pickNumber(c.arraisShare, 50));
+
+      updateReducersDisplay();
+
+      currentScenario = c.scenario || 'full';
+      document.querySelectorAll('.scenario-card').forEach(card => {
+        card.classList.toggle('selected', card.dataset.scenario === currentScenario);
+      });
+    } finally {
+      restoring = false;
+    }
+  }
+
   function getActiveReducer(inputs) {
     if (inputs.scenario === 'prehearing') return inputs.reducerPrehearing;
     if (inputs.scenario === 'hearing') return inputs.reducerHearing;
     return 100;
   }
-  
+
   function getActiveFee(inputs) {
     return inputs.referenceFee * (getActiveReducer(inputs) / 100);
   }
-  
+
   function getScenarioLabel(scenario) {
     if (scenario === 'prehearing') return 'Acordo Pré-Audiência';
     if (scenario === 'hearing') return 'Acordo na Audiência';
     return 'Tramitação até 2ª Instância';
   }
-  
+
   function compute(inputs) {
     const fixedFee = getActiveFee(inputs);
     const reducer = getActiveReducer(inputs);
@@ -806,71 +884,71 @@
     const gateAtingido = reducaoPercentual >= inputs.gatePercent;
     const exito = gateAtingido ? danoReduzido * (inputs.successPercent / 100) : 0;
     const totalBruto = fixedFee + exito;
-    
+
     let arraisRecebe = totalBruto;
     let parceiroRecebe = 0;
     if (inputs.partnershipActive) {
       arraisRecebe = totalBruto * (inputs.arraisShare / 100);
       parceiroRecebe = totalBruto - arraisRecebe;
     }
-    
+
     return { fixedFee, reducer, danoReduzido, reducaoPercentual, gateAtingido, exito, totalBruto, arraisRecebe, parceiroRecebe };
   }
-  
+
   function calculate() {
     const inputs = getInputs();
-    
+
     if (inputs.referenceFee === 0 && inputs.claimedValue === 0) {
       showToast('Preencha o valor de referência e o valor liquidado dos pedidos.', 'warning');
       return;
     }
-    
+
     const result = compute(inputs);
     renderResults(inputs, result);
     renderScenarios(inputs);
   }
-  
+
   function renderResults(inputs, result) {
     const container = document.getElementById('results-container');
-    
-    const reductionBadge = result.gateAtingido 
+
+    const reductionBadge = result.gateAtingido
       ? '<span class="badge badge-success">Gatilho atingido</span>'
       : '<span class="badge badge-warning">Abaixo do gatilho</span>';
-    
-    const scenarioBadge = `<span class="badge badge-info">${getScenarioLabel(inputs.scenario)} (${formatNumber(result.reducer).replace(',00', '')}%)</span>`;
-    
+
+    const scenarioBadge = `<span class="badge badge-info">${getScenarioLabel(inputs.scenario)} (${formatPercent(result.reducer)}%)</span>`;
+
     let partnershipHTML = '';
     if (inputs.partnershipActive) {
       partnershipHTML = `
         <div class="partnership-section">
           <div class="section-title">Após Divisão da Parceria</div>
           <div class="result-row">
-            <span class="result-label">Arrais Advogados (${inputs.arraisShare}%)</span>
+            <span class="result-label">Arrais Advogados (${formatPercent(inputs.arraisShare)}%)</span>
             <span class="result-value">${formatCurrency(result.arraisRecebe)}</span>
           </div>
           <div class="result-row" style="margin-top: 8px;">
-            <span class="result-label">Parceiro (${100 - inputs.arraisShare}%)</span>
+            <span class="result-label">Parceiro (${formatPercent(100 - inputs.arraisShare)}%)</span>
             <span class="result-value" style="color: var(--text-muted); font-size: 15px;">${formatCurrency(result.parceiroRecebe)}</span>
           </div>
         </div>
       `;
     }
-    
+
     let gateWarningHTML = '';
     if (!result.gateAtingido && inputs.claimedValue > 0) {
       gateWarningHTML = `
         <div class="gate-warning">
-          <strong>Êxito não devido:</strong> a redução de ${formatNumber(result.reducaoPercentual)}% 
-          ficou abaixo do gatilho mínimo de ${formatNumber(inputs.gatePercent)}% pactuado em contrato. 
+          <strong>Êxito não devido:</strong> a redução de ${formatNumber(result.reducaoPercentual)}%
+          ficou abaixo do gatilho mínimo de ${formatNumber(inputs.gatePercent)}% pactuado em contrato.
           Apenas o honorário fixo é devido.
         </div>
       `;
     }
-    
-    const reducerDetail = result.reducer === 100 
+
+    const reducerDetail = result.reducer === 100
       ? '100% sobre o valor de referência'
-      : `${formatNumber(result.reducer).replace(',00', '')}% sobre ${formatCurrency(inputs.referenceFee)}`;
-    
+      : `${formatPercent(result.reducer)}% sobre ${formatCurrency(inputs.referenceFee)}`;
+
     container.innerHTML = `
       <div class="result-card">
         <div class="result-row">
@@ -878,7 +956,7 @@
           <span class="result-value" style="font-size: 14px;">${scenarioBadge}</span>
         </div>
       </div>
-      
+
       <div class="result-card">
         <div class="result-row">
           <span class="result-label">Dano Econômico Reduzido (DER)</span>
@@ -888,7 +966,7 @@
           Redução de ${formatNumber(result.reducaoPercentual)}% sobre o valor liquidado dos pedidos ${reductionBadge}
         </div>
       </div>
-      
+
       <div class="result-card">
         <div class="result-row">
           <span class="result-label">Honorário Fixo Aplicável</span>
@@ -896,17 +974,17 @@
         </div>
         <div class="result-detail">${reducerDetail}</div>
       </div>
-      
+
       <div class="result-card">
         <div class="result-row">
           <span class="result-label">Honorário de Êxito (${formatNumber(inputs.successPercent)}%)</span>
           <span class="result-value">${formatCurrency(result.exito)}</span>
         </div>
-        ${result.gateAtingido 
-          ? `<div class="result-detail">${formatNumber(inputs.successPercent)}% sobre ${formatCurrency(result.danoReduzido)}</div>` 
+        ${result.gateAtingido
+          ? `<div class="result-detail">${formatNumber(inputs.successPercent)}% sobre ${formatCurrency(result.danoReduzido)}</div>`
           : '<div class="result-detail">Gatilho não atingido — êxito zerado.</div>'}
       </div>
-      
+
       <div class="result-card highlight">
         <div class="result-row">
           <span class="result-label">Total Bruto Cobrado do Cliente</span>
@@ -914,18 +992,18 @@
         </div>
         <div class="result-detail">Fixo (${getScenarioLabel(inputs.scenario)}) + Êxito</div>
       </div>
-      
+
       ${gateWarningHTML}
       ${partnershipHTML}
     `;
   }
-  
+
   function renderScenarios(inputs) {
     if (inputs.claimedValue === 0) {
       document.getElementById('scenarios-container').style.display = 'none';
       return;
     }
-    
+
     const scenarios = [
       { name: 'Improcedência total', condemnation: 0 },
       { name: 'Redução de 90%', condemnation: inputs.claimedValue * 0.10 },
@@ -935,7 +1013,7 @@
       { name: 'Redução de 30% (sem êxito)', condemnation: inputs.claimedValue * 0.70 },
       { name: 'Procedência total', condemnation: inputs.claimedValue }
     ];
-    
+
     const tbody = document.getElementById('scenarios-body');
     tbody.innerHTML = scenarios.map(s => {
       const r = compute({ ...inputs, condemnationValue: s.condemnation });
@@ -950,46 +1028,104 @@
         </tr>
       `;
     }).join('');
-    
+
     document.getElementById('scenarios-container').style.display = 'block';
   }
-  
+
+  /* ============================================================
+     TRANSPORTE DO CASO PELA URL
+     O localStorage NÃO é compartilhado entre a calculadora dentro
+     do painel (iframe) e a mesma página aberta em outra aba: o
+     navegador mantém cofres separados. Por isso o caso viaja no
+     próprio endereço (#caso=...), e não pelo armazenamento local.
+     ============================================================ */
+
+  function buildCaseLink(inputs) {
+    return location.origin + location.pathname + '#caso=' + encodeURIComponent(JSON.stringify(inputs));
+  }
+
+  function openFullscreen() {
+    const inputs = getInputs();
+    if (inputs.referenceFee === 0 && inputs.claimedValue === 0) {
+      showToast('Preencha o cálculo antes de abrir em tela cheia.', 'warning');
+      return;
+    }
+    window.open(buildCaseLink(inputs), '_blank', 'noopener');
+  }
+
+  function copyCaseLink(id, event) {
+    if (event) event.stopPropagation();
+    const c = loadCases().find(c => c.id === id);
+    if (!c) return;
+    const link = buildCaseLink(c);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(link)
+        .then(() => showToast('Link do caso copiado.'))
+        .catch(() => window.prompt('Copie o link do caso:', link));
+    } else {
+      window.prompt('Copie o link do caso:', link);
+    }
+  }
+
+  function loadFromHash() {
+    const m = location.hash.match(/^#caso=(.+)$/);
+    if (!m) return false;
+    try {
+      const c = JSON.parse(decodeURIComponent(m[1]));
+      applyState(c);
+      saveFormState();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  window.addEventListener('hashchange', function() {
+    if (loadFromHash()) calculate();
+  });
+
   const STORAGE_KEY = 'arrais_calc_cases_v3';
   const FORM_KEY = 'arrais_calc_form_v3';
-  
+
   function saveCase() {
     const inputs = getInputs();
-    
+
     if (!inputs.caseName) {
       showToast('Informe um nome/identificação para o caso antes de salvar.', 'warning');
       document.getElementById('case-name').focus();
       return;
     }
-    
+
     if (inputs.referenceFee === 0 && inputs.claimedValue === 0) {
       showToast('Preencha o valor de referência e o valor liquidado dos pedidos.', 'warning');
       return;
     }
-    
+
     const result = compute(inputs);
-    const cases = loadCases();
-    
+    let cases = loadCases();
+
+    const existing = cases.find(c => (c.caseName || '').toLowerCase() === inputs.caseName.toLowerCase());
+    if (existing) {
+      if (!confirm('Já existe um caso salvo com este nome. Deseja substituí-lo?')) return;
+      cases = cases.filter(c => c.id !== existing.id);
+    }
+
     const newCase = { id: Date.now(), ...inputs, result, savedAt: new Date().toISOString() };
-    
+
     cases.unshift(newCase);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cases));
-    
+
     renderSavedList();
-    showToast('Caso salvo com sucesso.');
+    showToast(existing ? 'Caso atualizado.' : 'Caso salvo com sucesso.');
   }
-  
+
   function loadCases() {
     try {
       const data = localStorage.getItem(STORAGE_KEY);
       return data ? JSON.parse(data) : [];
     } catch (e) { return []; }
   }
-  
+
   function deleteCase(id, event) {
     event.stopPropagation();
     if (!confirm('Deseja remover este caso?')) return;
@@ -998,37 +1134,36 @@
     renderSavedList();
     showToast('Caso removido.');
   }
-  
+
   function loadCaseById(id) {
     const c = loadCases().find(c => c.id === id);
     if (!c) return;
-    
-    document.getElementById('case-name').value = c.caseName || '';
-    document.getElementById('reference-fee').value = c.referenceFee ? formatNumber(c.referenceFee) : '';
-    document.getElementById('reducer-hearing').value = c.reducerHearing || 70;
-    document.getElementById('reducer-prehearing').value = c.reducerPrehearing || 50;
-    document.getElementById('success-percent').value = c.successPercent || 15;
-    document.getElementById('gate-percent').value = c.gatePercent || 50;
-    document.getElementById('claimed-value').value = c.claimedValue ? formatNumber(c.claimedValue) : '';
-    document.getElementById('condemnation-value').value = c.condemnationValue !== undefined ? formatNumber(c.condemnationValue) : '';
-    document.getElementById('partnership-active').value = c.partnershipActive ? 'yes' : 'no';
-    document.getElementById('arrais-share').value = c.arraisShare || 50;
-    
-    updateReducersDisplay();
-    selectScenario(c.scenario || 'full');
+
+    applyState(c);
+    saveFormState();
     calculate();
+
+    // Conferência: o total recalculado tem de bater com o total congelado no
+    // momento em que o caso foi salvo. Se divergir, avisa em vez de esconder.
+    if (c.result && typeof c.result.totalBruto === 'number') {
+      const recalc = compute(getInputs());
+      if (Math.abs(recalc.totalBruto - c.result.totalBruto) > 0.01) {
+        showToast('Atenção: o total recalculado difere do valor salvo (' + formatCurrency(c.result.totalBruto) + ').', 'warning');
+        return;
+      }
+    }
     showToast('Caso carregado.');
   }
-  
+
   function renderSavedList() {
     const cases = loadCases();
     const container = document.getElementById('saved-list');
-    
+
     if (cases.length === 0) {
       container.innerHTML = '<div class="empty-state">Nenhum caso salvo ainda.</div>';
       return;
     }
-    
+
     container.innerHTML = cases.map(c => {
       const date = new Date(c.savedAt).toLocaleDateString('pt-BR');
       const total = c.result ? formatCurrency(c.result.totalBruto) : '-';
@@ -1039,94 +1174,82 @@
             <div class="label">${escapeHtml(c.caseName)}</div>
             <div class="meta">${date} · ${sc} · Total: ${total}</div>
           </div>
-          <button class="delete-btn" onclick="deleteCase(${c.id}, event)" title="Remover">×</button>
+          <div class="saved-item-actions">
+            <button class="link-btn" onclick="copyCaseLink(${c.id}, event)" title="Copiar link deste caso">link</button>
+            <button class="delete-btn" onclick="deleteCase(${c.id}, event)" title="Remover">×</button>
+          </div>
         </div>
       `;
     }).join('');
   }
-  
+
   function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
   }
-  
+
   function saveFormState() {
-    const inputs = getInputs();
-    localStorage.setItem(FORM_KEY, JSON.stringify(inputs));
+    if (restoring) return;
+    localStorage.setItem(FORM_KEY, JSON.stringify(getInputs()));
   }
-  
+
   function loadFormState() {
     try {
       const data = localStorage.getItem(FORM_KEY);
-      if (!data) return;
-      const c = JSON.parse(data);
-      
-      document.getElementById('case-name').value = c.caseName || '';
-      document.getElementById('reference-fee').value = c.referenceFee ? formatNumber(c.referenceFee) : '';
-      document.getElementById('reducer-hearing').value = c.reducerHearing || 70;
-      document.getElementById('reducer-prehearing').value = c.reducerPrehearing || 50;
-      document.getElementById('success-percent').value = c.successPercent || 15;
-      document.getElementById('gate-percent').value = c.gatePercent || 50;
-      document.getElementById('claimed-value').value = c.claimedValue ? formatNumber(c.claimedValue) : '';
-      document.getElementById('condemnation-value').value = c.condemnationValue !== undefined && c.condemnationValue !== null ? formatNumber(c.condemnationValue) : '';
-      document.getElementById('partnership-active').value = c.partnershipActive ? 'yes' : 'no';
-      document.getElementById('arrais-share').value = c.arraisShare || 50;
-      
-      updateReducersDisplay();
-      if (c.scenario) selectScenario(c.scenario);
-    } catch (e) {}
+      if (!data) return false;
+      applyState(JSON.parse(data));
+      return true;
+    } catch (e) { return false; }
   }
-  
+
   document.querySelectorAll('input, select').forEach(el => {
     el.addEventListener('change', saveFormState);
     el.addEventListener('input', saveFormState);
   });
-  
+
   function clearForm() {
     if (!confirm('Deseja limpar todos os campos do formulário?')) return;
-    
-    document.getElementById('case-name').value = '';
-    document.getElementById('reference-fee').value = '';
-    document.getElementById('reducer-hearing').value = '70';
-    document.getElementById('reducer-prehearing').value = '50';
-    document.getElementById('success-percent').value = '15';
-    document.getElementById('gate-percent').value = '50';
-    document.getElementById('claimed-value').value = '';
+
+    applyState({
+      caseName: '', scenario: 'full', referenceFee: 0,
+      reducerHearing: 70, reducerPrehearing: 50,
+      successPercent: 15, gatePercent: 50,
+      claimedValue: 0, condemnationValue: 0,
+      partnershipActive: false, arraisShare: 50
+    });
     document.getElementById('condemnation-value').value = '';
-    document.getElementById('partnership-active').value = 'no';
-    document.getElementById('arrais-share').value = '50';
-    
-    updateReducersDisplay();
-    selectScenario('full');
-    
+
     document.getElementById('results-container').innerHTML = `
       <div class="empty-state" style="padding: 40px 20px;">
         Preencha os dados e clique em <strong>Calcular</strong> para ver a simulação.
       </div>
     `;
     document.getElementById('scenarios-container').style.display = 'none';
-    
+
     localStorage.removeItem(FORM_KEY);
+    if (location.hash) history.replaceState(null, '', location.pathname);
   }
-  
+
   function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
     toast.textContent = message;
     toast.style.background = type === 'warning' ? 'var(--warning)' : 'var(--success)';
     toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 2500);
+    setTimeout(() => toast.classList.remove('show'), 3500);
   }
-  
-  loadFormState();
+
+  // Boot: o caso vindo pela URL tem prioridade sobre o estado local.
+  const cameFromHash = loadFromHash();
+  if (!cameFromHash) loadFormState();
   renderSavedList();
   updateReducersDisplay();
-  
+
   const initial = getInputs();
   if (initial.referenceFee > 0 || initial.claimedValue > 0) {
     setTimeout(calculate, 100);
   }
-  
+
   document.querySelectorAll('input').forEach(input => {
     input.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') {
@@ -1135,6 +1258,7 @@
       }
     });
   });
+
 </script>
 
 </body>
